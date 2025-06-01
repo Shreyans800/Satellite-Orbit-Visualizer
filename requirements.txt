@@ -3,3 +3,6 @@ plotly
 numpy
 matplotlib
 pandas
+astropy
+poliastro
+warnings
