@@ -3,8 +3,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 import warnings
-
-warnings.filterwarnings("ignore", message="Thread 'MainThread': missing ScriptRunContext!")
 st.set_page_config(page_title="Satellite Orbit Visualizer", layout="wide")
 
 # Hide sidebar toggle button so sidebar can't be closed by user
@@ -30,6 +28,8 @@ with st.sidebar:
     inclination = st.slider("Inclination (°)", 0, 180, 0)
     show_2d = st.checkbox("Show 2D Orbit", value=True)
     show_3d = st.checkbox("Show 3D Orbit", value=True)
+
+warnings.filterwarnings("ignore", message="Thread 'MainThread': missing ScriptRunContext!")
 
 R_EARTH = 6371  # Earth radius in km
 MU = 398600     # Earth gravitational parameter km^3/s^2
