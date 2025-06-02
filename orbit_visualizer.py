@@ -120,7 +120,10 @@ def create_3d_orbit_animation(x, y, z):
                              marker=dict(size=6, color='red', symbol='square')),
                 # Invisible dummy trace to keep frames unique without affecting camera
                 go.Scatter3d(x=[None], y=[None], z=[None], mode='markers', marker=dict(opacity=0))
-            ]
+            ],
+            layout=dict(
+                scene_camera=default_camera  # Fix camera for each frame!
+            )
         ))
     # Loop back to start point
     frames.append(go.Frame(
@@ -128,7 +131,10 @@ def create_3d_orbit_animation(x, y, z):
             go.Scatter3d(x=[x[0]], y=[y[0]], z=[z[0]], mode='markers',
                          marker=dict(size=6, color='red', symbol='square')),
             go.Scatter3d(x=[None], y=[None], z=[None], mode='markers', marker=dict(opacity=0))
-        ]
+        ],
+        layout=dict(
+            scene_camera=default_camera
+        )
     ))
 
     fig.frames = frames
