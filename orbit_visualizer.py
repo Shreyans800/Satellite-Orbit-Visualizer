@@ -55,10 +55,9 @@ def create_earth_mesh():
 
 def create_3d_orbit_animation(x, y, z):
     max_range = np.max(np.abs(np.concatenate([x, y, z]))) * 1.2
-
     xs, ys, zs = create_earth_mesh()
 
-    # Use the camera settings that Reset Camera uses by default in plotly
+    # Use exact camera position from Reset Camera default
     default_camera = dict(
         eye=dict(x=1.25, y=1.25, z=1.25),
         up=dict(x=0, y=0, z=1),
@@ -81,6 +80,7 @@ def create_3d_orbit_animation(x, y, z):
                 aspectmode='data',
                 camera=default_camera
             ),
+            uirevision='fixed_camera',  # Keeps user view if they manually zoom/pan (optional)
             updatemenus=[dict(
                 type='buttons',
                 showactive=False,
@@ -114,7 +114,7 @@ def create_3d_orbit_animation(x, y, z):
                                marker=dict(size=6, color='red', symbol='square'))],
             layout=go.Layout(scene_camera=default_camera)
         ))
-    # Last frame resets satellite and Earth with default camera
+    # Last frame to reset satellite and camera
     frames.append(go.Frame(
         data=[go.Scatter3d(x=[x[0]], y=[y[0]], z=[z[0]], mode='markers',
                            marker=dict(size=6, color='red', symbol='square'))],
