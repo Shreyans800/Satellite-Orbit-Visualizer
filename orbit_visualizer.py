@@ -63,9 +63,9 @@ def create_3d_orbit_animation(x, y, z):
     y = y[::-1]
     z = z[::-1]
 
-    # Fixed camera closer to Earth & orbit
+    # Define a close camera eye position for zoomed-in view
     camera = dict(
-        eye=dict(x=2, y=2, z=2)  # Adjust as needed for zoom
+        eye=dict(x=8000, y=8000, z=6000)
     )
 
     base_data = [
@@ -101,6 +101,7 @@ def create_3d_orbit_animation(x, y, z):
         )
     )
 
+    # For each animation frame, include satellite marker and force camera position
     frames = []
     for i in range(len(x)):
         frames.append(go.Frame(
@@ -108,6 +109,7 @@ def create_3d_orbit_animation(x, y, z):
                 go.Scatter3d(x=[x[i]], y=[y[i]], z=[z[i]], mode='markers',
                              marker=dict(size=6, color='red', symbol='square'))
             ],
+            layout=go.Layout(scene_camera=camera),
             name=str(i)
         ))
 
