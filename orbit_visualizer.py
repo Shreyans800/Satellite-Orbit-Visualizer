@@ -2,12 +2,9 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-import warnings
 
-warnings.filterwarnings("ignore", message="Thread 'MainThread': missing ScriptRunContext!")
-
-R_EARTH = 6371  # Earth radius in km
-MU = 398600     # Earth gravitational parameter km^3/s^2
+R_EARTH = 6371
+MU = 398600
 
 def classify_orbit(altitude_km, inclination_deg):
     if abs(inclination_deg - 90) < 5:
@@ -33,23 +30,21 @@ def generate_orbit(apoapsis_km, periapsis_km, inclination_deg, steps=200):
     inc_rad = np.radians(inclination_deg)
 
     theta = np.linspace(0, 2*np.pi, steps)
-    # Reverse orbit direction for back-to-front revolution
-    theta = 2 * np.pi - theta
+    theta = 2 * np.pi - theta  # Reverse direction
 
     r = (a * (1 - e**2)) / (1 + e * np.cos(theta))
 
     x = r * np.cos(theta)
     y = r * np.sin(theta)
-    # Rotate orbit for inclination
     z = y * np.sin(inc_rad)
     y = y * np.cos(inc_rad)
 
-    period = 2 * np.pi * np.sqrt(a**3 / MU)  # seconds
+    period = 2 * np.pi * np.sqrt(a**3 / MU)
     min_alt = min(periapsis_km, apoapsis_km)
     max_alt = max(periapsis_km, apoapsis_km)
     orbit_type = classify_orbit((min_alt + max_alt) / 2, inclination_deg)
 
-    return x, y, z, period/60, (min_alt, max_alt), orbit_type
+    return x, y, z, period / 60, (min_alt, max_alt), orbit_type
 
 def create_earth_mesh():
     u, v = np.mgrid[0:2*np.pi:60j, 0:np.pi:30j]
@@ -86,26 +81,9 @@ def create_3d_orbit_figure(x, y, z, position_index=0):
             )
         )
     )
-
     return fig
 
-def plot_2d(x, y):
-    import matplotlib.pyplot as plt
-    from matplotlib.patches import Circle
-
-    fig, ax = plt.subplots(figsize=(6, 6))
-    earth = Circle((0, 0), R_EARTH, color='blue', alpha=0.3)
-    ax.add_patch(earth)
-    ax.plot(x, y, 'r-', label='Orbit Path')
-    ax.set_aspect('equal')
-    ax.set_xlabel('X (km)')
-    ax.set_ylabel('Y (km)')
-    ax.set_title("2D Orbit Visualization")
-    ax.legend()
-    ax.grid(True)
-    st.pyplot(fig)
-
-# Streamlit UI
+# --- Streamlit app ---
 st.set_page_config(page_title="Satellite Orbit Visualizer", layout="wide")
 st.title("🛰️ Satellite Orbit Visualizer (2D & 3D)")
 
@@ -114,29 +92,39 @@ with st.sidebar:
     periapsis = st.number_input("Periapsis Altitude (km)", min_value=0.0, value=200.0, step=10.0)
     apoapsis = st.number_input("Apoapsis Altitude (km)", min_value=0.0, value=300.0, step=10.0)
     inclination = st.slider("Inclination (°)", 0, 180, 0)
-    show_2d = st.checkbox("Show 2D Orbit", value=True)
     show_3d = st.checkbox("Show 3D Orbit", value=True)
+
+# Initialize session state storage
+if "orbit_data" not in st.session_state:
+    st.session_state.orbit_data = None
 
 if st.button("Generate Orbit"):
     x, y, z, period_min, alt_range, orbit_type = generate_orbit(apoapsis, periapsis, inclination)
+    st.session_state.orbit_data = {
+        "x": x,
+        "y": y,
+        "z": z,
+        "period_min": period_min,
+        "alt_range": alt_range,
+        "orbit_type": orbit_type
+    }
+
+if st.session_state.orbit_data:
+    od = st.session_state.orbit_data
     st.subheader("🛰️ Orbit Summary")
-    st.markdown(f"**Orbit Type:** {orbit_type}")
-    st.markdown(f"**Orbital Period:** {period_min:.2f} minutes")
-    st.markdown(f"**Altitude Range:** {alt_range[0]} km to {alt_range[1]} km")
+    st.markdown(f"**Orbit Type:** {od['orbit_type']}")
+    st.markdown(f"**Orbital Period:** {od['period_min']:.2f} minutes")
+    st.markdown(f"**Altitude Range:** {od['alt_range'][0]} km to {od['alt_range'][1]} km")
 
-    df = pd.DataFrame({'X (km)': x, 'Y (km)': y, 'Z (km)': z})
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download Orbit Data (CSV)", data=csv, file_name="orbit_data.csv", mime='text/csv')
-
-    if show_2d:
-        plot_2d(x, y)
+    pos_idx = st.slider("Satellite Position on Orbit", 0, len(od["x"]) - 1, 0, step=1)
 
     if show_3d:
-        # Slider to move satellite position along orbit path
-        pos_idx = st.slider("Satellite Position on Orbit", 0, len(x)-1, 0, step=1)
-        fig3d = create_3d_orbit_figure(x, y, z, pos_idx)
+        fig3d = create_3d_orbit_figure(od["x"], od["y"], od["z"], pos_idx)
         st.plotly_chart(fig3d, use_container_width=True)
+else:
+    st.info("Please generate an orbit first using the inputs above.")
 
+# Orbit reference table
 st.subheader("📋 Orbit Type Reference Table")
 orbit_table = pd.DataFrame({
     "Orbit Type": ["LEO", "MEO", "HEO", "GEO", "SSO", "Polar", "GTO", "Unclassified"],
