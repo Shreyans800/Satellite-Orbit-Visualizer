@@ -55,13 +55,13 @@ def create_earth_mesh():
     return xs, ys, zs
 
 def create_3d_orbit_animation(x, y, z):
-    max_range = np.max(np.abs(np.concatenate([x, y, z]))) * 1.2
+    max_range = np.max(np.abs(np.concatenate([x, y, z]))) * 200
 
     xs, ys, zs = create_earth_mesh()
 
     # Fixed camera position and no zoom changes
     camera = dict(
-        eye=dict(x=2 * max_range, y=2 * max_range, z=2 * max_range)
+        eye=dict(x=200 * max_range, y=200 * max_range, z=200 * max_range)
     )
 
     fig = go.Figure(
@@ -105,6 +105,12 @@ def create_3d_orbit_animation(x, y, z):
     frames.append(go.Frame(
         data=[go.Scatter3d(x=[x[0]], y=[y[0]], z=[z[0]], mode='markers',
                            marker=dict(size=6, color='red', symbol='square'))]
+        def create_earth_mesh():
+    u, v = np.mgrid[0:2*np.pi:60j, 0:np.pi:30j]
+    xs = R_EARTH * np.cos(u) * np.sin(v)
+    ys = R_EARTH * np.sin(u) * np.sin(v)
+    zs = R_EARTH * np.cos(v)
+    return xs, ys, zs
     ))
 
     fig.frames = frames
