@@ -3,7 +3,7 @@ import numpy as np
 import plotly.graph_objects as go
 from poliastro.bodies import Earth
 from poliastro.twobody import Orbit
-from poliastro.util import time_range
+from astropy.time import TimeDelta
 from astropy import units as u
 import pandas as pd
 import warnings
@@ -32,8 +32,9 @@ def orbit_simulation(orbit_type, altitude_km=None, inclination_deg=None, periaps
         st.error("Unsupported orbit type.")
         return None, None
 
-    times = time_range(orbit.epoch, end=orbit.epoch + orbit.period, periods=100)
-    r_vectors = np.array([orbit.propagate(t).r.to(u.km).value for t in times])
+    num_points = 100
+    times = [orbit.epoch + TimeDelta(t) for t in np.linspace(0, orbit.period.to_value(u.s), num_points) * u.s]
+    r_vectors = np.array([orbit.propagate(t - orbit.epoch).r.to_value(u.km) for t in times])
 
     fig = go.Figure()
 
@@ -115,7 +116,6 @@ def plot_power_vs_time(panel_area, efficiency, orbit_period_min):
 
     power_over_time = []
     for t in times_min:
-        # Eclipse occurs centered around half orbit
         if orbit_period_min * (0.5 - eclipse_fraction / 2) <= t <= orbit_period_min * (0.5 + eclipse_fraction / 2):
             power_over_time.append(0)
         else:
@@ -142,7 +142,6 @@ def plot_power_vs_time(panel_area, efficiency, orbit_period_min):
 # --- Streamlit app starts here ---
 st.title("CubeSat Design and Cold Gas Propulsion Simulator")
 
-# Orbit input
 orbit_type = st.selectbox("Orbit Type", options=["circular", "elliptical"])
 
 valid_orbit_params = True
@@ -151,8 +150,8 @@ if orbit_type == "circular":
     altitude = st.number_input("Orbit Altitude (km)", min_value=100, value=500)
     inclination = st.number_input("Orbit Inclination (deg)", min_value=0.0, max_value=180.0, value=97.6)
 else:
-    periapsis = st.number_input("Periapsis Altitude (km)", min_value=100, value=500)
-    apoapsis = st.number_input("Apoapsis Altitude (km)", min_value=100, value=2000)
+    periapsis = st.number_input("Periapsis Altitude (km)", min_value=100, value=300)
+    apoapsis = st.number_input("Apoapsis Altitude (km)", min_value=100, value=800)
     inclination = st.number_input("Orbit Inclination (deg)", min_value=0.0, max_value=180.0, value=97.6)
     if periapsis >= apoapsis:
         st.error("Periapsis must be less than Apoapsis.")
@@ -174,12 +173,12 @@ st.subheader("Solar Panel Parameters")
 panel_area = st.number_input("Solar Panel Area (m²)", min_value=0.0, value=0.1)
 efficiency = st.number_input("Solar Panel Efficiency (0 to 1)", min_value=0.0, max_value=1.0, value=0.28)
 
-# Run simulation button
+# Run simulation
 if st.button("Run Simulation"):
     if not valid_orbit_params:
         st.error("Cannot run simulation: periapsis must be less than apoapsis.")
     else:
-        # Calculate propulsion data table
+        # Propulsion table
         table_data = []
         for gas in gas_data:
             thrust, isp = cold_gas_thrust(gas["m_dot"], gas["ve"])
@@ -193,10 +192,10 @@ if st.button("Run Simulation"):
         st.subheader("Cold Gas Propulsion Data Table")
         st.dataframe(df)
 
-        # Orbit simulation & plot with error handling
+        # Orbit simulation
         try:
             if orbit_type == "circular":
-                orbit_fig, orbit_period = orbit_simulation(orbit_type, altitude, inclination)
+                orbit_fig, orbit_period = orbit_simulation(orbit_type, altitude_km=altitude, inclination_deg=inclination)
             else:
                 orbit_fig, orbit_period = orbit_simulation(orbit_type, periapsis_km=periapsis, apoapsis_km=apoapsis, inclination_deg=inclination)
         except Exception as e:
@@ -208,9 +207,8 @@ if st.button("Run Simulation"):
         else:
             st.warning("Orbit plot could not be generated.")
 
-        # Use default orbit period if None to avoid crashing solar power plot
         if orbit_period is None:
-            orbit_period = 90  # typical LEO orbit period in minutes
+            orbit_period = 90  # fallback value
 
         # Solar power plot
         power_fig = plot_power_vs_time(panel_area, efficiency, orbit_period)
