@@ -142,5 +142,16 @@ orbit_table = pd.DataFrame({
     "Orbit Type": ["LEO", "MEO", "HEO", "GEO", "SSO", "Polar", "GTO", "Unclassified"],
     "Periapsis (km)": ["160-2000", "2000-35786", "Above 35786", "Approx 35786", "600-800", "Varies", "200-35786", "-"],
     "Apoapsis (km)": ["160-2000", "2000-35786", "Above 35786", "Approx 35786", "600-800", "Varies", "200-35786", "-"],
+    "Inclination (deg)": ["0-90", "10-60", "Varies", "0", "Near 90", "Near 90", "Varies", "-"],
+    "Description": [
+        "Low Earth Orbit",
+        "Medium Earth Orbit",
+        "High Earth Orbit",
+        "Geostationary Orbit",
+        "Sun-Synchronous Orbit",
+        "Polar Orbit",
+        "Geostationary Transfer Orbit",
+        "Outside standard classifications"
+    ]
 })
 st.dataframe(orbit_table)
