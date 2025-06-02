@@ -58,7 +58,7 @@ def create_earth_mesh():
     zs = R_EARTH * np.cos(v)
     return xs, ys, zs
 
-def create_3d_orbit_animation(x, y, z):
+def create_3d_orbit_figure(x, y, z, position_index=0):
     max_range = np.max(np.abs(np.concatenate([x, y, z]))) * 1.2
     xs, ys, zs = create_earth_mesh()
 
@@ -72,72 +72,21 @@ def create_3d_orbit_animation(x, y, z):
         data=[
             go.Surface(x=xs, y=ys, z=zs, colorscale='Blues', opacity=0.6, showscale=False, name='Earth'),
             go.Scatter3d(x=x, y=y, z=z, mode='lines', line=dict(color='red', width=3), name='Orbit'),
-            go.Scatter3d(x=[x[0]], y=[y[0]], z=[z[0]], mode='markers',
+            go.Scatter3d(x=[x[position_index]], y=[y[position_index]], z=[z[position_index]], mode='markers',
                          marker=dict(size=6, color='red', symbol='square'), name='Satellite')
         ],
         layout=go.Layout(
-            title="3D Orbit Animation",
+            title="3D Orbit Visualization",
             scene=dict(
                 xaxis=dict(range=[-max_range, max_range], autorange=False, title='X (km)'),
                 yaxis=dict(range=[-max_range, max_range], autorange=False, title='Y (km)'),
                 zaxis=dict(range=[-max_range, max_range], autorange=False, title='Z (km)'),
                 aspectmode='data',
                 camera=default_camera,
-            ),
-            updatemenus=[
-                dict(
-                    type='buttons',
-                    showactive=False,
-                    y=1,
-                    x=0.8,
-                    xanchor='left',
-                    yanchor='bottom',
-                    buttons=[dict(label='▶ Play',
-                                  method='animate',
-                                  args=[None, {"frame": {"duration": 50, "redraw": True},
-                                               "fromcurrent": True, "mode": "immediate"}])],
-                ),
-                dict(
-                    type='buttons',
-                    showactive=False,
-                    y=1,
-                    x=0.9,
-                    xanchor='left',
-                    yanchor='bottom',
-                    buttons=[dict(label='Reset Camera',
-                                  method='relayout',
-                                  args=[{'scene.camera': default_camera}])]
-                )
-            ]
+            )
         )
     )
 
-    frames = []
-    for i in range(len(x)):
-        frames.append(go.Frame(
-            data=[
-                go.Scatter3d(x=[x[i]], y=[y[i]], z=[z[i]], mode='markers',
-                             marker=dict(size=6, color='red', symbol='square')),
-                # Invisible dummy trace to keep frames unique without affecting camera
-                go.Scatter3d(x=[None], y=[None], z=[None], mode='markers', marker=dict(opacity=0))
-            ],
-            layout=dict(
-                scene_camera=default_camera  # Fix camera for each frame!
-            )
-        ))
-    # Loop back to start point
-    frames.append(go.Frame(
-        data=[
-            go.Scatter3d(x=[x[0]], y=[y[0]], z=[z[0]], mode='markers',
-                         marker=dict(size=6, color='red', symbol='square')),
-            go.Scatter3d(x=[None], y=[None], z=[None], mode='markers', marker=dict(opacity=0))
-        ],
-        layout=dict(
-            scene_camera=default_camera
-        )
-    ))
-
-    fig.frames = frames
     return fig
 
 def plot_2d(x, y):
@@ -166,7 +115,7 @@ with st.sidebar:
     apoapsis = st.number_input("Apoapsis Altitude (km)", min_value=0.0, value=300.0, step=10.0)
     inclination = st.slider("Inclination (°)", 0, 180, 0)
     show_2d = st.checkbox("Show 2D Orbit", value=True)
-    show_3d = st.checkbox("Show 3D Orbit with Animation", value=True)
+    show_3d = st.checkbox("Show 3D Orbit", value=True)
 
 if st.button("Generate Orbit"):
     x, y, z, period_min, alt_range, orbit_type = generate_orbit(apoapsis, periapsis, inclination)
@@ -181,25 +130,17 @@ if st.button("Generate Orbit"):
 
     if show_2d:
         plot_2d(x, y)
+
     if show_3d:
-        fig3d = create_3d_orbit_animation(x, y, z)
+        # Slider to move satellite position along orbit path
+        pos_idx = st.slider("Satellite Position on Orbit", 0, len(x)-1, 0, step=1)
+        fig3d = create_3d_orbit_figure(x, y, z, pos_idx)
         st.plotly_chart(fig3d, use_container_width=True)
 
 st.subheader("📋 Orbit Type Reference Table")
 orbit_table = pd.DataFrame({
     "Orbit Type": ["LEO", "MEO", "HEO", "GEO", "SSO", "Polar", "GTO", "Unclassified"],
-    "Periapsis (km)": [160, 2000, 35786, 35786, 600, "Varies, but at 90 degrees (approx)", 200, "-"],
-    "Apoapsis (km)": [2000, 35786, 50000, 35786, 800, "-", 35786, "-"],
-    "Inclination (deg)": ["0-90", "10-60", "varies", "0", "near 90", "near 90", "varies", "-"],
-    "Description": [
-        "Low Earth Orbit",
-        "Medium Earth Orbit",
-        "High Earth Orbit",
-        "Geostationary Orbit",
-        "Sun-Synchronous Orbit",
-        "Polar Orbit",
-        "Geostationary Transfer Orbit",
-        "Outside standard classifications"
-    ]
+    "Periapsis (km)": ["160-2000", "2000-35786", "Above 35786", "Approx 35786", "600-800", "Varies", "200-35786", "-"],
+    "Apoapsis (km)": ["160-2000", "2000-35786", "Above 35786", "Approx 35786", "600-800", "Varies", "200-35786", "-"],
 })
 st.dataframe(orbit_table)
