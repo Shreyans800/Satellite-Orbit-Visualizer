@@ -86,6 +86,7 @@ def create_3d_orbit_figure(x, y, z, sat_idx=0):
 st.set_page_config(page_title="Satellite Orbit Visualizer", layout="wide")
 st.title("🛰️ Satellite Orbit Visualizer (2D & 3D)")
 
+# Sidebar inputs always visible, no expander
 with st.sidebar:
     st.header("Input Parameters")
     periapsis = st.number_input("Periapsis Altitude (km)", min_value=0.0, value=200.0, step=10.0)
@@ -130,12 +131,12 @@ if st.session_state.orbit_data:
     st.markdown(f"**Orbital Period:** {od['period_min']:.2f} minutes")
     st.markdown(f"**Altitude Range:** {od['alt_range'][0]} km to {od['alt_range'][1]} km")
 
-    # Slider for satellite position from 0 to 360 degrees
-    pos_deg = st.slider("Satellite Position (degrees)", 0, 360, 0, step=1)
-    pos_idx = int((pos_deg / 360) * (len(od["x"]) - 1))
-
     if show_2d:
         plot_2d(od["x"], od["y"])
+
+    # Slider BELOW 2D plot for satellite position from 0 to 360 degrees
+    pos_deg = st.slider("Satellite Position (degrees)", 0, 360, 0, step=1)
+    pos_idx = int((pos_deg / 360) * (len(od["x"]) - 1))
 
     if show_3d:
         fig3d = create_3d_orbit_figure(od["x"], od["y"], od["z"], pos_idx)
