@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 import warnings
+
 warnings.filterwarnings("ignore", message="Thread 'MainThread': missing ScriptRunContext!")
 
 R_EARTH = 6371  # Earth radius in km
@@ -58,14 +59,14 @@ def create_3d_orbit_animation(x, y, z):
 
     xs, ys, zs = create_earth_mesh()
 
-    # Reverse orbit direction
-    x = x[::-1]
-    y = y[::-1]
-    z = z[::-1]
+    # Camera for static (before play)
+    camera_static = dict(
+        eye=dict(x=20000, y=20000, z=15000)
+    )
 
-    # Define a close camera eye position for zoomed-in view
-    camera = dict(
-        eye=dict(x=8000, y=8000, z=6000)
+    # Camera for animation frames (during play)
+    camera_anim = dict(
+        eye=dict(x=15000, y=15000, z=12000)
     )
 
     base_data = [
@@ -84,7 +85,7 @@ def create_3d_orbit_animation(x, y, z):
                 yaxis=dict(range=[-max_range, max_range], autorange=False, title='Y (km)'),
                 zaxis=dict(range=[-max_range, max_range], autorange=False, title='Z (km)'),
                 aspectmode='data',
-                camera=camera
+                camera=camera_static  # Initial camera before play
             ),
             updatemenus=[dict(
                 type='buttons',
@@ -95,13 +96,13 @@ def create_3d_orbit_animation(x, y, z):
                 yanchor='bottom',
                 buttons=[dict(label='▶ Play',
                               method='animate',
-                              args=[None, {"frame": {"duration": 50, "redraw": True},
-                                           "fromcurrent": True, "mode": "immediate"}])],
+                              args=[[str(i) for i in range(len(x))],
+                                    {"frame": {"duration": 50, "redraw": True},
+                                     "fromcurrent": True, "mode": "immediate"}])],
             )]
         )
     )
 
-    # For each animation frame, include satellite marker and force camera position
     frames = []
     for i in range(len(x)):
         frames.append(go.Frame(
@@ -109,12 +110,24 @@ def create_3d_orbit_animation(x, y, z):
                 go.Scatter3d(x=[x[i]], y=[y[i]], z=[z[i]], mode='markers',
                              marker=dict(size=6, color='red', symbol='square'))
             ],
-            layout=go.Layout(scene_camera=camera),
+            layout=go.Layout(scene_camera=camera_anim),  # Camera during animation frames
             name=str(i)
         ))
 
     fig.frames = frames
     return fig
+
+# Streamlit UI
+st.set_page_config(page_title="Satellite Orbit Visualizer", layout="wide")
+st.title("🛰️ Satellite Orbit Visualizer (2D & 3D)")
+
+with st.sidebar:
+    st.header("Input Parameters")
+    periapsis = st.number_input("Periapsis Altitude (km)", min_value=0.0, value=200.0, step=10.0)
+    apoapsis = st.number_input("Apoapsis Altitude (km)", min_value=0.0, value=300.0, step=10.0)
+    inclination = st.slider("Inclination (°)", 0, 180, 0)
+    show_2d = st.checkbox("Show 2D Orbit", value=True)
+    show_3d = st.checkbox("Show 3D Orbit with Animation", value=True)
 
 def plot_2d(x, y):
     import matplotlib.pyplot as plt
@@ -130,18 +143,6 @@ def plot_2d(x, y):
     ax.legend()
     ax.grid(True)
     st.pyplot(fig)
-
-# Streamlit UI
-st.set_page_config(page_title="Satellite Orbit Visualizer", layout="wide")
-st.title("🛰️ Satellite Orbit Visualizer (2D & 3D)")
-
-with st.sidebar:
-    st.header("Input Parameters")
-    periapsis = st.number_input("Periapsis Altitude (km)", min_value=0.0, value=200.0, step=10.0)
-    apoapsis = st.number_input("Apoapsis Altitude (km)", min_value=0.0, value=300.0, step=10.0)
-    inclination = st.slider("Inclination (°)", 0, 180, 0)
-    show_2d = st.checkbox("Show 2D Orbit", value=True)
-    show_3d = st.checkbox("Show 3D Orbit with Animation", value=True)
 
 if st.button("Generate Orbit"):
     x, y, z, period_min, alt_range, orbit_type = generate_orbit(apoapsis, periapsis, inclination)
@@ -163,7 +164,7 @@ if st.button("Generate Orbit"):
 st.subheader("📋 Orbit Type Reference Table")
 orbit_table = pd.DataFrame({
     "Orbit Type": ["LEO", "MEO", "HEO", "GEO", "SSO", "Polar", "GTO", "Unclassified"],
-    "Periapsis (km)": [160, 2000, 35786, 35786, 600, "Varies ~ 90°", 200, "-"],
-    "Apoapsis (km)": [2000, 35786, "100000", 35786, 800, "Varies ~ 90°", 35786, "-"],
+    "Periapsis (km)": [160, 2000, 35786, 35786, 600, 0, 200, "-"],
+    "Apoapsis (km)": [2000, 35786, 100000, 35786, 800, 0, 35786, "-"],
 })
 st.table(orbit_table)
