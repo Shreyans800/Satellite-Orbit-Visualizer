@@ -171,7 +171,7 @@ if st.button("Generate Orbit"):
 st.subheader("📋 Orbit Type Reference Table")
 orbit_table = pd.DataFrame({
     "Orbit Type": ["LEO", "MEO", "HEO", "GEO", "SSO", "Polar", "GTO", "Unclassified"],
-    "Periapsis (km)": [160, 2000, 35786, 35786, 600, "Varies (~90° inclination)", 200, "-"],
-    "Apoapsis (km)": [2000, 35786, "100000", 35786, 800, "Varies (~90° inclination)", 35786, "-"],
+    "Periapsis (km)": [160, 2000, 35786, 35786, 600, "Varies (~90° Inclination)", 200, "-"],
+    "Apoapsis (km)": [2000, 35786, "100000", 35786, 800, "Varies (~90° Inclination)", 35786, "-"],
 })
 st.table(orbit_table)
