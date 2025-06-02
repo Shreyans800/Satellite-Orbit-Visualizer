@@ -2,11 +2,8 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-import warnings
 
-warnings.filterwarnings("ignore", message="Thread 'MainThread': missing ScriptRunContext!")
-
-R_EARTH = 6371  # Earth radius in km
+R_EARTH = 6371  # km
 MU = 398600     # Earth gravitational parameter km^3/s^2
 
 def classify_orbit(altitude_km, inclination_deg):
@@ -32,12 +29,13 @@ def generate_orbit(apoapsis_km, periapsis_km, inclination_deg, steps=200):
     e = (apoapsis_km - periapsis_km) / (apoapsis_km + periapsis_km + 2 * R_EARTH)
     inc_rad = np.radians(inclination_deg)
 
-    # Reverse theta direction for front-to-back revolution
+    # Orbit angle theta for satellite position, reversed direction (back to front)
     theta = np.linspace(2*np.pi, 0, steps)
     r = (a * (1 - e**2)) / (1 + e * np.cos(theta))
 
     x = r * np.cos(theta)
     y = r * np.sin(theta)
+    # Apply inclination rotation
     z = y * np.sin(inc_rad)
     y = y * np.cos(inc_rad)
 
@@ -60,9 +58,11 @@ def create_3d_orbit_animation(x, y, z):
 
     xs, ys, zs = create_earth_mesh()
 
-    # Use a single camera dict for both initial and animation frames
-    camera = dict(
-        eye=dict(x=1.5 * max_range, y=1.5 * max_range, z=1.2 * max_range)
+    # Use the camera settings that Reset Camera uses by default in plotly
+    default_camera = dict(
+        eye=dict(x=1.25, y=1.25, z=1.25),
+        up=dict(x=0, y=0, z=1),
+        center=dict(x=0, y=0, z=0)
     )
 
     fig = go.Figure(
@@ -79,7 +79,7 @@ def create_3d_orbit_animation(x, y, z):
                 yaxis=dict(range=[-max_range, max_range], autorange=False, title='Y (km)'),
                 zaxis=dict(range=[-max_range, max_range], autorange=False, title='Z (km)'),
                 aspectmode='data',
-                camera=camera
+                camera=default_camera
             ),
             updatemenus=[dict(
                 type='buttons',
@@ -92,6 +92,17 @@ def create_3d_orbit_animation(x, y, z):
                               method='animate',
                               args=[None, {"frame": {"duration": 50, "redraw": True},
                                            "fromcurrent": True, "mode": "immediate"}])],
+            ),
+            dict(
+                type='buttons',
+                showactive=False,
+                y=1,
+                x=0.9,
+                xanchor='left',
+                yanchor='bottom',
+                buttons=[dict(label='Reset Camera',
+                              method='relayout',
+                              args=[{'scene.camera': default_camera}])]
             )]
         )
     )
@@ -99,19 +110,15 @@ def create_3d_orbit_animation(x, y, z):
     frames = []
     for i in range(len(x)):
         frames.append(go.Frame(
-            data=[
-                go.Surface(x=xs, y=ys, z=zs, colorscale='Blues', opacity=0.6, showscale=False, name='Earth'),
-                go.Scatter3d(x=[x[i]], y=[y[i]], z=[z[i]], mode='markers',
-                             marker=dict(size=6, color='red', symbol='square'), name='Satellite')
-            ]
+            data=[go.Scatter3d(x=[x[i]], y=[y[i]], z=[z[i]], mode='markers',
+                               marker=dict(size=6, color='red', symbol='square'))],
+            layout=go.Layout(scene_camera=default_camera)
         ))
-    # Add last frame to reset satellite to start and keep Earth visible
+    # Last frame resets satellite and Earth with default camera
     frames.append(go.Frame(
-        data=[
-            go.Surface(x=xs, y=ys, z=zs, colorscale='Blues', opacity=0.6, showscale=False, name='Earth'),
-            go.Scatter3d(x=[x[0]], y=[y[0]], z=[z[0]], mode='markers',
-                         marker=dict(size=6, color='red', symbol='square'), name='Satellite')
-        ]
+        data=[go.Scatter3d(x=[x[0]], y=[y[0]], z=[z[0]], mode='markers',
+                           marker=dict(size=6, color='red', symbol='square'))],
+        layout=go.Layout(scene_camera=default_camera)
     ))
 
     fig.frames = frames
@@ -164,7 +171,7 @@ if st.button("Generate Orbit"):
 st.subheader("📋 Orbit Type Reference Table")
 orbit_table = pd.DataFrame({
     "Orbit Type": ["LEO", "MEO", "HEO", "GEO", "SSO", "Polar", "GTO", "Unclassified"],
-    "Periapsis (km)": [160, 2000, 35786, 35786, 600, "Varies (~90°)", 200, "-"],
-    "Apoapsis (km)": [2000, 35786, 100000, 35786, 800, "Varies (~90°)", 35786, "-"],
+    "Periapsis (km)": [160, 2000, 35786, 35786, 600, "Varies (~90° inclination)", 200, "-"],
+    "Apoapsis (km)": [2000, 35786, "100000", 35786, 800, "Varies (~90° inclination)", 35786, "-"],
 })
 st.table(orbit_table)
