@@ -61,7 +61,7 @@ def create_3d_orbit_animation(x, y, z):
 
     # Fixed camera position and no zoom changes
     camera = dict(
-        eye=dict(x=1.5 * max_range, y=1.5 * max_range, z=1.2 * max_range)
+        eye=dict(x=2 * max_range, y=2 * max_range, z=2 * max_range)
     )
 
     fig = go.Figure(
