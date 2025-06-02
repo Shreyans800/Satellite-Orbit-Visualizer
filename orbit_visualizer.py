@@ -65,7 +65,7 @@ def create_3d_orbit_animation(x, y, z):
 
     # Fixed camera closer to Earth & orbit
     camera = dict(
-        eye=dict(x=8000, y=8000, z=6000)  # Adjust as needed for zoom
+        eye=dict(x=80, y=80, z=60)  # Adjust as needed for zoom
     )
 
     base_data = [
