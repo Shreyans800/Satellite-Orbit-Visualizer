@@ -54,20 +54,23 @@ def create_earth_mesh():
     return xs, ys, zs
 
 def create_3d_orbit_animation(x, y, z):
-    max_range = np.max(np.abs(np.concatenate([x, y, z]))) * 1.2
+    max_range = np.max(np.abs(np.concatenate([x, y, z])))
 
     xs, ys, zs = create_earth_mesh()
 
-    # Closer camera (zoom in)
+    # Reverse orbit direction
+    x = x[::-1]
+    y = y[::-1]
+    z = z[::-1]
+
+    # Fixed camera closer to Earth & orbit
     camera = dict(
-        eye=dict(x=1.2 * max_range, y=1.2 * max_range, z=1.0 * max_range)
+        eye=dict(x=8000, y=8000, z=6000)  # Adjust as needed for zoom
     )
 
-    # Base traces: Earth surface and full orbit path
     base_data = [
         go.Surface(x=xs, y=ys, z=zs, colorscale='Blues', opacity=0.6, showscale=False, name='Earth'),
         go.Scatter3d(x=x, y=y, z=z, mode='lines', line=dict(color='red', width=3), name='Orbit'),
-        # Satellite marker starting at first point
         go.Scatter3d(x=[x[0]], y=[y[0]], z=[z[0]], mode='markers',
                      marker=dict(size=6, color='red', symbol='square'), name='Satellite')
     ]
@@ -99,11 +102,9 @@ def create_3d_orbit_animation(x, y, z):
     )
 
     frames = []
-    # Each frame updates only the satellite position (keep Earth and orbit always visible)
     for i in range(len(x)):
         frames.append(go.Frame(
             data=[
-                # Only satellite marker changes per frame
                 go.Scatter3d(x=[x[i]], y=[y[i]], z=[z[i]], mode='markers',
                              marker=dict(size=6, color='red', symbol='square'))
             ],
@@ -111,7 +112,6 @@ def create_3d_orbit_animation(x, y, z):
         ))
 
     fig.frames = frames
-
     return fig
 
 def plot_2d(x, y):
