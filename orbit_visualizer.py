@@ -5,6 +5,31 @@ import streamlit as st
 import warnings
 
 warnings.filterwarnings("ignore", message="Thread 'MainThread': missing ScriptRunContext!")
+st.set_page_config(page_title="Satellite Orbit Visualizer", layout="wide")
+
+# Hide sidebar toggle button so sidebar can't be closed by user
+st.markdown(
+    """
+    <style>
+    button[data-testid="collapsed-control"] {
+        display: none;
+    }
+    .css-1d391kg {
+        min-width: 300px !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# your existing sidebar and rest of app below...
+with st.sidebar:
+    st.header("Input Parameters")
+    periapsis = st.number_input("Periapsis Altitude (km)", min_value=0.0, value=200.0, step=10.0)
+    apoapsis = st.number_input("Apoapsis Altitude (km)", min_value=0.0, value=300.0, step=10.0)
+    inclination = st.slider("Inclination (°)", 0, 180, 0)
+    show_2d = st.checkbox("Show 2D Orbit", value=True)
+    show_3d = st.checkbox("Show 3D Orbit", value=True)
 
 R_EARTH = 6371  # Earth radius in km
 MU = 398600     # Earth gravitational parameter km^3/s^2
