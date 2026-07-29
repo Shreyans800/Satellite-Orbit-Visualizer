@@ -25,9 +25,7 @@ MU = 398600           # Earth gravitational parameter km^3/s^2
 # ============================================================
 
 def classify_orbit(altitude_km, inclination_deg):
-
-
-if abs(inclination_deg - 90) < 5:
+    if abs(inclination_deg - 90) < 5:
 
     if 600 <= altitude_km <= 800:
         return "Sun-Synchronous Orbit (SSO)"
@@ -54,7 +52,10 @@ elif 200 <= altitude_km <= 35786:
 
 else:
     return "Unclassified"
-```
+
+
+
+
 
 # ============================================================
 
