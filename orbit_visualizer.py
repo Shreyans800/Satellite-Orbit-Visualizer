@@ -1,11 +1,5 @@
-import time
-import warnings
-
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
-
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -23,22 +17,14 @@ st.set_page_config(
 
 
 # ============================================================
-# CONSTANTS
-# ============================================================
-
-R_EARTH = 6371.0       # Earth radius in km
-MU = 398600.4418       # Earth's gravitational parameter km^3/s^2
-
-
-# ============================================================
-# CUSTOM CSS
+# CSS
 # ============================================================
 
 st.markdown(
     """
     <style>
 
-    /* Hide Streamlit sidebar collapse buttons */
+    /* Hide sidebar collapse buttons */
     button[data-testid="collapsedControl"] {
         display: none !important;
     }
@@ -47,22 +33,24 @@ st.markdown(
         display: none !important;
     }
 
-    /* Keep sidebar visible */
+    /* Keep sidebar width */
     [data-testid="stSidebar"] {
         min-width: 300px !important;
         width: 300px !important;
-        transform: none !important;
-    }
-
-    /* Main page */
-    .main {
-        padding-top: 1rem;
     }
 
     </style>
     """,
     unsafe_allow_html=True
 )
+
+
+# ============================================================
+# CONSTANTS
+# ============================================================
+
+R_EARTH = 6371.0
+MU = 398600.4418
 
 
 # ============================================================
@@ -102,32 +90,25 @@ def classify_orbit(
     # Polar
     if (
         85 <= inclination_deg <= 95
-        and not (
-            600 <= periapsis_km <= 800
-            and 600 <= apoapsis_km <= 800
-        )
     ):
         return "Polar Orbit"
 
     # GTO
     if (
         periapsis_km <= 1000
-        and apoapsis_km >= 30000
-        and apoapsis_km <= 40000
+        and 30000 <= apoapsis_km <= 40000
     ):
         return "Geostationary Transfer Orbit (GTO)"
 
     # LEO
     if (
         160 <= average_altitude <= 2000
-        and altitude_difference <= 500
     ):
         return "Low Earth Orbit (LEO)"
 
     # MEO
     if (
         2000 < average_altitude < 35786
-        and altitude_difference <= 10000
     ):
         return "Medium Earth Orbit (MEO)"
 
@@ -152,27 +133,40 @@ def generate_orbit(
     steps=360
 ):
 
-    # Ensure apoapsis is larger
-    if apoapsis_km < periapsis_km:
-        apoapsis_km, periapsis_km = (
-            periapsis_km,
-            apoapsis_km
+    apoapsis_km = float(apoapsis_km)
+    periapsis_km = float(periapsis_km)
+    inclination_deg = float(inclination_deg)
+
+    # Swap if necessary
+    if periapsis_km > apoapsis_km:
+
+        periapsis_km, apoapsis_km = (
+            apoapsis_km,
+            periapsis_km
         )
 
-    # Distances from Earth's center
-    r_a = R_EARTH + apoapsis_km
+    # Distance from Earth's center
     r_p = R_EARTH + periapsis_km
+    r_a = R_EARTH + apoapsis_km
 
     # Semi-major axis
-    a = (r_a + r_p) / 2
+    a = (
+        r_p + r_a
+    ) / 2
 
     # Eccentricity
-    e = (r_a - r_p) / (r_a + r_p)
+    e = (
+        r_a - r_p
+    ) / (
+        r_a + r_p
+    )
 
     # Inclination
-    inc = np.radians(inclination_deg)
+    inc = np.radians(
+        inclination_deg
+    )
 
-    # True anomaly
+    # 360 complete positions
     theta = np.linspace(
         0,
         2 * np.pi,
@@ -180,25 +174,40 @@ def generate_orbit(
         endpoint=False
     )
 
-    # Orbital radius
+    # Radius
     r = (
-        a * (1 - e**2)
-        / (1 + e * np.cos(theta))
+        a * (1 - e ** 2)
+        / (
+            1
+            + e * np.cos(theta)
+        )
     )
 
-    # Orbit in orbital plane
+    # Orbital plane
     x = r * np.cos(theta)
-    y_orbital = r * np.sin(theta)
 
-    # Rotate orbit by inclination
-    y = y_orbital * np.cos(inc)
-    z = y_orbital * np.sin(inc)
+    y_orbital = (
+        r * np.sin(theta)
+    )
+
+    # Rotate by inclination
+    y = (
+        y_orbital
+        * np.cos(inc)
+    )
+
+    z = (
+        y_orbital
+        * np.sin(inc)
+    )
 
     # Orbital period
     period_seconds = (
         2
         * np.pi
-        * np.sqrt(a**3 / MU)
+        * np.sqrt(
+            a ** 3 / MU
+        )
     )
 
     period_minutes = (
@@ -216,19 +225,27 @@ def generate_orbit(
         "y": y,
         "z": z,
         "theta": theta,
-        "period_min": float(period_minutes),
-        "periapsis": float(periapsis_km),
-        "apoapsis": float(apoapsis_km),
-        "inclination": float(inclination_deg),
+        "period_min": float(
+            period_minutes
+        ),
+        "periapsis": float(
+            periapsis_km
+        ),
+        "apoapsis": float(
+            apoapsis_km
+        ),
+        "inclination": float(
+            inclination_deg
+        ),
         "orbit_type": orbit_type
     }
 
 
 # ============================================================
-# EARTH FOR 3D
+# EARTH
 # ============================================================
 
-def create_earth_mesh():
+def create_earth():
 
     u, v = np.mgrid[
         0:2 * np.pi:50j,
@@ -256,7 +273,7 @@ def create_earth_mesh():
 
 
 # ============================================================
-# 2D ORBIT
+# 2D PLOT
 # ============================================================
 
 def create_2d_plot(
@@ -264,6 +281,9 @@ def create_2d_plot(
     y,
     sat_idx
 ):
+
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Circle
 
     fig, ax = plt.subplots(
         figsize=(7, 7)
@@ -276,7 +296,9 @@ def create_2d_plot(
         alpha=0.7
     )
 
-    ax.add_patch(earth)
+    ax.add_patch(
+        earth
+    )
 
     # Orbit
     ax.plot(
@@ -295,10 +317,13 @@ def create_2d_plot(
         label="Satellite"
     )
 
-    # Calculate fixed range
     max_range = max(
-        np.max(np.abs(x)),
-        np.max(np.abs(y))
+        np.max(
+            np.abs(x)
+        ),
+        np.max(
+            np.abs(y)
+        )
     ) * 1.15
 
     ax.set_xlim(
@@ -312,8 +337,7 @@ def create_2d_plot(
     )
 
     ax.set_aspect(
-        "equal",
-        adjustable="box"
+        "equal"
     )
 
     ax.set_xlabel(
@@ -339,33 +363,37 @@ def create_2d_plot(
 
 
 # ============================================================
-# 3D ORBIT
+# 3D ANIMATED PLOT
 # ============================================================
 
-def create_3d_plot(
+def create_animated_3d_plot(
     x,
     y,
-    z,
-    sat_idx
+    z
 ):
 
     earth_x, earth_y, earth_z = (
-        create_earth_mesh()
+        create_earth()
     )
 
-    # Fixed axis range
+    # Fixed camera / fixed zoom
     max_radius = max(
-        np.max(np.abs(x)),
-        np.max(np.abs(y)),
-        np.max(np.abs(z))
+        np.max(
+            np.abs(x)
+        ),
+        np.max(
+            np.abs(y)
+        ),
+        np.max(
+            np.abs(z)
+        )
     )
 
-    axis_range = (
-        max_radius * 1.15
+    axis_limit = (
+        max_radius * 1.20
     )
 
-    # Fixed camera
-    camera = dict(
+    fixed_camera = dict(
         eye=dict(
             x=1.5,
             y=1.5,
@@ -375,71 +403,112 @@ def create_3d_plot(
             x=0,
             y=0,
             z=0
+        ),
+        up=dict(
+            x=0,
+            y=0,
+            z=1
         )
     )
 
-    fig = go.Figure()
+    # ========================================================
+    # INITIAL FIGURE
+    # ========================================================
 
-    # --------------------------------------------------------
-    # EARTH
-    # --------------------------------------------------------
+    fig = go.Figure(
 
-    fig.add_trace(
-        go.Surface(
-            x=earth_x,
-            y=earth_y,
-            z=earth_z,
-            colorscale="Blues",
-            opacity=0.85,
-            showscale=False,
-            name="Earth",
-            hoverinfo="skip"
-        )
-    )
+        data=[
 
-    # --------------------------------------------------------
-    # ORBIT
-    # --------------------------------------------------------
-
-    fig.add_trace(
-        go.Scatter3d(
-            x=x,
-            y=y,
-            z=z,
-            mode="lines",
-            line=dict(
-                width=4
+            # EARTH
+            go.Surface(
+                x=earth_x,
+                y=earth_y,
+                z=earth_z,
+                colorscale="Blues",
+                opacity=0.85,
+                showscale=False,
+                name="Earth",
+                hoverinfo="skip"
             ),
-            name="Orbit"
-        )
-    )
 
-    # --------------------------------------------------------
-    # RED CUBE SATELLITE
-    # --------------------------------------------------------
-
-    fig.add_trace(
-        go.Scatter3d(
-            x=[x[sat_idx]],
-            y=[y[sat_idx]],
-            z=[z[sat_idx]],
-            mode="markers",
-            marker=dict(
-                size=9,
-                color="red",
-                symbol="square"
+            # ORBIT
+            go.Scatter3d(
+                x=x,
+                y=y,
+                z=z,
+                mode="lines",
+                line=dict(
+                    width=4,
+                    color="red"
+                ),
+                name="Orbit"
             ),
-            name="Satellite"
-        )
+
+            # SATELLITE
+            go.Scatter3d(
+                x=[x[0]],
+                y=[y[0]],
+                z=[z[0]],
+                mode="markers",
+                marker=dict(
+                    size=10,
+                    color="red",
+                    symbol="square"
+                ),
+                name="Satellite"
+            )
+        ]
     )
 
-    # --------------------------------------------------------
-    # LAYOUT
-    # --------------------------------------------------------
+    # ========================================================
+    # ANIMATION FRAMES
+    # ========================================================
+
+    frames = []
+
+    for i in range(
+        len(x)
+    ):
+
+        frame = go.Frame(
+
+            name=str(i),
+
+            data=[
+
+                # Satellite only
+                # Earth and orbit stay fixed
+                go.Scatter3d(
+                    x=[x[i]],
+                    y=[y[i]],
+                    z=[z[i]],
+                    mode="markers",
+                    marker=dict(
+                        size=10,
+                        color="red",
+                        symbol="square"
+                    )
+                )
+            ],
+
+            traces=[2]
+        )
+
+        frames.append(
+            frame
+        )
+
+    fig.frames = frames
+
+    # ========================================================
+    # PLAY / STOP BUTTONS
+    # ========================================================
 
     fig.update_layout(
 
-        title="3D Satellite Orbit",
+        title=(
+            "3D Satellite Orbit Simulation"
+        ),
 
         margin=dict(
             l=0,
@@ -450,15 +519,15 @@ def create_3d_plot(
 
         scene=dict(
 
-            # Fixed camera
-            camera=camera,
+            camera=fixed_camera,
 
-            # Fixed axis ranges
+            # IMPORTANT:
+            # Fixed ranges prevent automatic zoom
             xaxis=dict(
                 title="X (km)",
                 range=[
-                    -axis_range,
-                    axis_range
+                    -axis_limit,
+                    axis_limit
                 ],
                 autorange=False
             ),
@@ -466,8 +535,8 @@ def create_3d_plot(
             yaxis=dict(
                 title="Y (km)",
                 range=[
-                    -axis_range,
-                    axis_range
+                    -axis_limit,
+                    axis_limit
                 ],
                 autorange=False
             ),
@@ -475,17 +544,148 @@ def create_3d_plot(
             zaxis=dict(
                 title="Z (km)",
                 range=[
-                    -axis_range,
-                    axis_range
+                    -axis_limit,
+                    axis_limit
                 ],
                 autorange=False
             ),
 
-            # Prevent automatic zooming
-            aspectmode="cube",
+            aspectmode="cube"
+        ),
 
-            dragmode="orbit"
-        )
+        # ====================================================
+        # ANIMATION CONTROLS
+        # ====================================================
+
+        updatemenus=[
+
+            dict(
+
+                type="buttons",
+
+                showactive=False,
+
+                direction="left",
+
+                x=0.1,
+
+                y=1.12,
+
+                buttons=[
+
+                    # START
+                    dict(
+
+                        label="▶ Start Simulation",
+
+                        method="animate",
+
+                        args=[
+
+                            None,
+
+                            dict(
+
+                                frame=dict(
+                                    duration=50,
+                                    redraw=True
+                                ),
+
+                                transition=dict(
+                                    duration=0
+                                ),
+
+                                fromcurrent=True,
+
+                                mode="immediate"
+                            )
+                        ]
+                    ),
+
+                    # STOP
+                    dict(
+
+                        label="⏹ Stop Simulation",
+
+                        method="animate",
+
+                        args=[
+
+                            [None],
+
+                            dict(
+
+                                frame=dict(
+                                    duration=0,
+                                    redraw=False
+                                ),
+
+                                transition=dict(
+                                    duration=0
+                                ),
+
+                                mode="immediate"
+                            )
+                        ]
+                    )
+                ]
+            )
+        ],
+
+        # ====================================================
+        # SLIDER
+        # ====================================================
+
+        sliders=[
+
+            dict(
+
+                active=0,
+
+                x=0.1,
+
+                y=0.02,
+
+                len=0.8,
+
+                currentvalue=dict(
+                    prefix="Position: "
+                ),
+
+                steps=[
+
+                    dict(
+
+                        label=f"{i}°",
+
+                        method="animate",
+
+                        args=[
+
+                            [str(i)],
+
+                            dict(
+
+                                mode="immediate",
+
+                                frame=dict(
+                                    duration=0,
+                                    redraw=True
+                                ),
+
+                                transition=dict(
+                                    duration=0
+                                )
+                            )
+                        ]
+                    )
+
+                    for i in range(
+                        360
+                    )
+                ]
+            )
+        ]
     )
 
     return fig
@@ -498,16 +698,6 @@ def create_3d_plot(
 if "orbit_data" not in st.session_state:
 
     st.session_state.orbit_data = None
-
-
-if "simulation_running" not in st.session_state:
-
-    st.session_state.simulation_running = False
-
-
-if "satellite_position" not in st.session_state:
-
-    st.session_state.satellite_position = 0
 
 
 # ============================================================
@@ -538,8 +728,7 @@ with st.sidebar:
         "Orbit Inclination (°)",
         min_value=0,
         max_value=180,
-        value=0,
-        step=1
+        value=0
     )
 
     show_2d = st.checkbox(
@@ -552,7 +741,7 @@ with st.sidebar:
         value=True
     )
 
-    generate_button = st.button(
+    generate = st.button(
         "Generate Orbit",
         use_container_width=True
     )
@@ -573,46 +762,37 @@ st.write(
 
 
 # ============================================================
-# GENERATE ORBIT
+# GENERATE
 # ============================================================
 
-if generate_button:
+if generate:
 
-    if periapsis > apoapsis:
-
-        st.warning(
-            "Periapsis was greater than apoapsis. "
-            "The values have been automatically swapped."
+    st.session_state.orbit_data = (
+        generate_orbit(
+            apoapsis,
+            periapsis,
+            inclination
         )
-
-    st.session_state.orbit_data = generate_orbit(
-        apoapsis,
-        periapsis,
-        inclination
     )
 
-    # Reset satellite
-    st.session_state.satellite_position = 0
-
-    # Stop previous simulation
-    st.session_state.simulation_running = False
-
 
 # ============================================================
-# DISPLAY ORBIT
+# MAIN APP
 # ============================================================
 
 if st.session_state.orbit_data is not None:
 
-    orbit = st.session_state.orbit_data
+    orbit = (
+        st.session_state.orbit_data
+    )
 
     x = orbit["x"]
     y = orbit["y"]
     z = orbit["z"]
 
-    # --------------------------------------------------------
+    # ========================================================
     # SUMMARY
-    # --------------------------------------------------------
+    # ========================================================
 
     st.subheader(
         "🛰️ Orbit Summary"
@@ -631,60 +811,23 @@ if st.session_state.orbit_data is not None:
 
         st.metric(
             "Orbital Period",
-            f"{orbit['period_min']:.2f} min"
+            f"{orbit['period_min']:.2f} minutes"
         )
 
     with col3:
 
         st.metric(
-            "Altitude",
-            f"{float(orbit['periapsis']):.0f} - "
-            f"{float(orbit['apoapsis']):.0f} km"
-        )
-
-
-    # --------------------------------------------------------
-    # POSITION
-    # --------------------------------------------------------
-
-    position_deg = st.slider(
-        "Satellite Position (°)",
-        min_value=0,
-        max_value=360,
-        value=st.session_state.satellite_position,
-        step=1,
-        key="position_slider"
-    )
-
-    # Update session state
-    st.session_state.satellite_position = (
-        position_deg
-    )
-
-    # Convert 0-360 degrees to orbit index
-    if position_deg == 360:
-
-        sat_idx = 0
-
-    else:
-
-        sat_idx = int(
+            "Altitude Range",
             (
-                position_deg
-                / 360
+                f"{orbit['periapsis']:.0f} - "
+                f"{orbit['apoapsis']:.0f} km"
             )
-            * len(x)
-        )
-
-        sat_idx = min(
-            sat_idx,
-            len(x) - 1
         )
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # 2D
-    # --------------------------------------------------------
+    # ========================================================
 
     if show_2d:
 
@@ -692,10 +835,11 @@ if st.session_state.orbit_data is not None:
             "🌍 2D Orbit Visualization"
         )
 
+        # Initial satellite location
         fig_2d = create_2d_plot(
             x,
             y,
-            sat_idx
+            0
         )
 
         st.pyplot(
@@ -704,85 +848,52 @@ if st.session_state.orbit_data is not None:
         )
 
 
-    # --------------------------------------------------------
-    # SIMULATION CONTROLS
-    # --------------------------------------------------------
-
-    st.subheader(
-        "🎮 Simulation Controls"
-    )
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-
-        if st.button(
-            "▶ Start Simulation",
-            use_container_width=True
-        ):
-
-            st.session_state.simulation_running = True
-
-
-    with col2:
-
-        if st.button(
-            "⏹ Stop Simulation",
-            use_container_width=True
-        ):
-
-            st.session_state.simulation_running = False
-
-
-    # --------------------------------------------------------
-    # SIMULATION STATUS
-    # --------------------------------------------------------
-
-    if st.session_state.simulation_running:
-
-        st.success(
-            "🟢 Simulation Running"
-        )
-
-    else:
-
-        st.info(
-            "🔴 Simulation Stopped"
-        )
-
-
-    # --------------------------------------------------------
+    # ========================================================
     # 3D
-    # --------------------------------------------------------
+    # ========================================================
 
     if show_3d:
 
         st.subheader(
-            "🌍 3D Orbit Visualization"
+            "🌍 3D Orbit Simulation"
         )
 
-        fig_3d = create_3d_plot(
-            x,
-            y,
-            z,
-            sat_idx
+        st.info(
+            "Use ▶ Start Simulation to move the satellite. "
+            "Use ⏹ Stop Simulation to pause it. "
+            "The camera and zoom remain fixed."
+        )
+
+        fig_3d = (
+            create_animated_3d_plot(
+                x,
+                y,
+                z
+            )
         )
 
         st.plotly_chart(
             fig_3d,
             use_container_width=True,
-            key="orbit_3d"
+            config={
+                "scrollZoom": True,
+                "displayModeBar": True,
+                "displaylogo": False
+            }
         )
 
 
-    # --------------------------------------------------------
-    # CSV DOWNLOAD
-    # --------------------------------------------------------
+    # ========================================================
+    # CSV
+    # ========================================================
+
+    st.subheader(
+        "📥 Download Orbit Data"
+    )
 
     csv_df = pd.DataFrame(
         {
             "Angle (degrees)": np.arange(
-                0,
                 360
             ),
 
@@ -794,60 +905,36 @@ if st.session_state.orbit_data is not None:
         }
     )
 
-    csv_data = csv_df.to_csv(
-        index=False
-    ).encode(
-        "utf-8"
+    csv_data = (
+        csv_df
+        .to_csv(
+            index=False
+        )
+        .encode(
+            "utf-8"
+        )
     )
 
     st.download_button(
-        "📥 Download Orbit Data (CSV)",
+        "📥 Download Orbit CSV",
         data=csv_data,
-        file_name="satellite_orbit_data.csv",
+        file_name=(
+            "satellite_orbit_data.csv"
+        ),
         mime="text/csv"
     )
-
-
-    # --------------------------------------------------------
-    # AUTOMATIC SIMULATION
-    # --------------------------------------------------------
-
-    if st.session_state.simulation_running:
-
-        # Increase position
-        next_position = (
-            st.session_state.satellite_position
-            + 2
-        )
-
-        # Complete revolution
-        if next_position >= 360:
-
-            next_position = 0
-
-        st.session_state.satellite_position = (
-            next_position
-        )
-
-        # Animation speed
-        time.sleep(
-            0.05
-        )
-
-        # Rerun application
-        st.rerun()
 
 
 else:
 
     st.info(
-        "Enter your orbit parameters in the sidebar "
-        "and click 'Generate Orbit'."
+        "Enter the orbit parameters in the sidebar "
+        "and click Generate Orbit."
     )
 
 
 # ============================================================
-# ORBIT REFERENCE TABLE
+# REFERENCE TABLE
 # ============================================================
 
 st.subheader(
