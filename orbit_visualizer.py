@@ -25,39 +25,33 @@ MU = 398600           # Earth gravitational parameter km^3/s^2
 # ============================================================
 
 def classify_orbit(altitude_km, inclination_deg):
+
     if abs(inclination_deg - 90) < 5:
         if 600 <= altitude_km <= 800:
             return "Sun-Synchronous Orbit (SSO)"
-        
+        else:
+            return "Polar Orbit"
 
-    return "Polar Orbit"
+    elif (
+        abs(inclination_deg) < 5
+        and abs(altitude_km - 35786) < 200
+    ):
+        return "Geostationary Orbit (GEO)"
 
-    
+    elif 160 <= altitude_km <= 2000:
+        return "Low Earth Orbit (LEO)"
 
-elif (
-    abs(inclination_deg) < 5
-    and abs(altitude_km - 35786) < 200
-):
-    return "Geostationary Orbit (GEO)"
+    elif 2000 < altitude_km < 35786:
+        return "Medium Earth Orbit (MEO)"
 
-elif 160 <= altitude_km <= 2000:
-    return "Low Earth Orbit (LEO)"
+    elif altitude_km > 35786:
+        return "High Earth Orbit (HEO)"
 
-elif 2000 < altitude_km < 35786:
-    return "Medium Earth Orbit (MEO)"
+    elif 200 <= altitude_km <= 35786:
+        return "Geostationary Transfer Orbit (GTO)"
 
-elif altitude_km > 35786:
-    return "High Earth Orbit (HEO)"
-
-elif 200 <= altitude_km <= 35786:
-    return "Geostationary Transfer Orbit (GTO)"
-
-else:
-    return "Unclassified"
-
-
-
-
+    else:
+        return "Unclassified"
 
 # ============================================================
 
