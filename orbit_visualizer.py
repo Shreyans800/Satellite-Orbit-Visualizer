@@ -1,4 +1,4 @@
-```python
+python
 import time
 import warnings
 
@@ -895,4 +895,3 @@ orbit_table = pd.DataFrame(
 st.table(
     orbit_table
 )
-```
