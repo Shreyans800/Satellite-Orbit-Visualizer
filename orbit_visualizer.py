@@ -216,10 +216,10 @@ def generate_orbit(
         "y": y,
         "z": z,
         "theta": theta,
-        "period_min": period_minutes,
-        "periapsis": periapsis_km,
-        "apoapsis": apoapsis_km,
-        "inclination": inclination_deg,
+        "period_min": float(period_minutes),
+        "periapsis": float(periapsis_km),
+        "apoapsis": float(apoapsis_km),
+        "inclination": float(inclination_deg),
         "orbit_type": orbit_type
     }
 
@@ -638,8 +638,8 @@ if st.session_state.orbit_data is not None:
 
         st.metric(
             "Altitude",
-            f"{orbit['periapsis']:.0f} - "
-            f"{orbit['apoapsis']:.0f} km"
+            f"{float(orbit['periapsis']):.0f} - "
+            f"{float(orbit['apoapsis']):.0f} km"
         )
 
 
