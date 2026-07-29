@@ -205,7 +205,7 @@ def create_3d_orbit_figure(x, y, z):
                 type="buttons",
                 showactive=False,
                 direction="left",
-                x=0.5,
+                x=0.01,
                 xanchor="center",
                 y=1.20,
                 yanchor="top",
