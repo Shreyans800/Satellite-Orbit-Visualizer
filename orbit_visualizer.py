@@ -329,7 +329,7 @@ if generate_simulation:
         "x": x,
         "y": y,
         "z": z,
-        "period": period,
+        "period_min": period,
         "alt_range": alt_range,
         "orbit_type": orbit_type
     }
@@ -351,7 +351,7 @@ if st.session_state.orbit_data is not None:
     )
 
     st.markdown(
-        f"**Orbital Period:** {od['period']:.2f} minutes"
+        f"**Orbital Period:** {od['period_min']:.2f} minutes"
     )
 
     st.markdown(
