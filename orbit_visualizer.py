@@ -47,10 +47,8 @@ def generate_orbit(apoapsis_km, periapsis_km, inclination_deg, steps=360):
         periapsis_km, apoapsis_km = apoapsis_km, periapsis_km
 
     a = (apoapsis_km + periapsis_km + 2 * R_EARTH) / 2
-
-    e = (
-        (apoapsis_km - periapsis_km)
-        / (apoapsis_km + periapsis_km + 2 * R_EARTH)
+    e = (apoapsis_km - periapsis_km) / (
+        apoapsis_km + periapsis_km + 2 * R_EARTH
     )
 
     inc = np.radians(inclination_deg)
@@ -59,10 +57,9 @@ def generate_orbit(apoapsis_km, periapsis_km, inclination_deg, steps=360):
     r = (a * (1 - e**2)) / (1 + e * np.cos(theta))
 
     x = r * np.cos(theta)
-    y_orbit = r * np.sin(theta)
-
-    y = y_orbit * np.cos(inc)
-    z = y_orbit * np.sin(inc)
+    y0 = r * np.sin(theta)
+    y = y0 * np.cos(inc)
+    z = y0 * np.sin(inc)
 
     period = 2 * np.pi * np.sqrt(a**3 / MU) / 60
 
@@ -78,7 +75,7 @@ def generate_orbit(apoapsis_km, periapsis_km, inclination_deg, steps=360):
 
 
 def create_earth_mesh():
-    u, v = np.mgrid[0:2 * np.pi:40j, 0:np.pi:20j]
+    u, v = np.mgrid[0:2*np.pi:40j, 0:np.pi:20j]
 
     x = R_EARTH * np.cos(u) * np.sin(v)
     y = R_EARTH * np.sin(u) * np.sin(v)
@@ -92,7 +89,7 @@ def create_3d_orbit_figure(x, y, z):
         np.abs(np.concatenate([x, y, z]))
     ) * 1.15
 
-    earth_x, earth_y, earth_z = create_earth_mesh()
+    ex, ey, ez = create_earth_mesh()
 
     camera = dict(
         eye=dict(x=1.5, y=1.5, z=1.2),
@@ -103,27 +100,22 @@ def create_3d_orbit_figure(x, y, z):
     fig = go.Figure(
         data=[
             go.Surface(
-                x=earth_x,
-                y=earth_y,
-                z=earth_z,
+                x=ex,
+                y=ey,
+                z=ez,
                 colorscale="Blues",
                 opacity=0.65,
                 showscale=False,
                 name="Earth"
             ),
-
             go.Scatter3d(
                 x=x,
                 y=y,
                 z=z,
                 mode="lines",
-                line=dict(
-                    color="red",
-                    width=3
-                ),
+                line=dict(color="red", width=3),
                 name="Orbit"
             ),
-
             go.Scatter3d(
                 x=[x[0]],
                 y=[y[0]],
@@ -139,7 +131,7 @@ def create_3d_orbit_figure(x, y, z):
         ]
     )
 
-    frames = [
+    fig.frames = [
         go.Frame(
             name=str(i),
             data=[
@@ -160,56 +152,41 @@ def create_3d_orbit_figure(x, y, z):
         for i in range(len(x))
     ]
 
-    fig.frames = frames
-
     fig.update_layout(
         title=dict(
             text="3D Orbit Visualization",
             x=0.5,
             xanchor="center"
         ),
-
-        margin=dict(
-            l=0,
-            r=0,
-            t=90,
-            b=0
-        ),
-
+        margin=dict(l=0, r=0, t=90, b=0),
         scene=dict(
             camera=camera,
-
             xaxis=dict(
                 range=[-max_range, max_range],
                 autorange=False,
                 title="X (km)"
             ),
-
             yaxis=dict(
                 range=[-max_range, max_range],
                 autorange=False,
                 title="Y (km)"
             ),
-
             zaxis=dict(
                 range=[-max_range, max_range],
                 autorange=False,
                 title="Z (km)"
             ),
-
             aspectmode="cube"
         ),
-
         updatemenus=[
             dict(
                 type="buttons",
                 showactive=False,
                 direction="left",
                 x=0.01,
-                xanchor="center",
+                xanchor="left",
                 y=1.20,
                 yanchor="top",
-
                 buttons=[
                     dict(
                         label="▶ Start Simulation",
@@ -229,7 +206,6 @@ def create_3d_orbit_figure(x, y, z):
                             }
                         ]
                     ),
-
                     dict(
                         label="⏹ Stop Simulation",
                         method="animate",
@@ -261,14 +237,14 @@ def plot_2d(x, y):
 
     fig, ax = plt.subplots(figsize=(6, 6))
 
-    earth = Circle(
-        (0, 0),
-        R_EARTH,
-        color="blue",
-        alpha=0.3
+    ax.add_patch(
+        Circle(
+            (0, 0),
+            R_EARTH,
+            color="blue",
+            alpha=0.3
+        )
     )
-
-    ax.add_patch(earth)
 
     ax.plot(
         x,
@@ -290,59 +266,60 @@ def plot_2d(x, y):
     )
 
 
-st.title(
-    "🛰️ Satellite Orbit Visualizer (2D & 3D)"
-)
-
+# ============================================================
+# SIDEBAR
+# ============================================================
 
 with st.sidebar:
     st.header("Input Parameters")
 
-    periapsis = st.number_input(
-        "Periapsis Altitude (km)",
-        min_value=0.0,
-        value=200.0,
-        step=10.0
-    )
+    with st.form("simulation_form"):
+        periapsis = st.number_input(
+            "Periapsis Altitude (km)",
+            min_value=0.0,
+            value=200.0,
+            step=10.0
+        )
 
-    apoapsis = st.number_input(
-        "Apoapsis Altitude (km)",
-        min_value=0.0,
-        value=300.0,
-        step=10.0
-    )
+        apoapsis = st.number_input(
+            "Apoapsis Altitude (km)",
+            min_value=0.0,
+            value=300.0,
+            step=10.0
+        )
 
-    inclination = st.slider(
-        "Inclination (°)",
-        0,
-        180,
-        0
-    )
+        inclination = st.slider(
+            "Inclination (°)",
+            0,
+            180,
+            0
+        )
 
-    show_2d = st.checkbox(
-        "Show 2D Orbit",
-        value=True
-    )
+        show_2d = st.checkbox(
+            "Show 2D Orbit",
+            value=True
+        )
 
-    show_3d = st.checkbox(
-        "Show 3D Orbit",
-        value=True
-    )
+        show_3d = st.checkbox(
+            "Show 3D Orbit",
+            value=True
+        )
 
+        generate_simulation = st.form_submit_button(
+            "🚀 Generate Simulation",
+            use_container_width=True
+        )
+
+
+# ============================================================
+# GENERATE SIMULATION
+# ============================================================
 
 if "orbit_data" not in st.session_state:
     st.session_state.orbit_data = None
 
-
-if st.button("Generate Orbit"):
-    (
-        x,
-        y,
-        z,
-        period_min,
-        alt_range,
-        orbit_type
-    ) = generate_orbit(
+if generate_simulation:
+    x, y, z, period, alt_range, orbit_type = generate_orbit(
         apoapsis,
         periapsis,
         inclination
@@ -352,13 +329,19 @@ if st.button("Generate Orbit"):
         "x": x,
         "y": y,
         "z": z,
-        "period_min": period_min,
+        "period": period,
         "alt_range": alt_range,
         "orbit_type": orbit_type
     }
 
 
-if st.session_state.orbit_data:
+# ============================================================
+# MAIN APP
+# ============================================================
+
+st.title("🛰️ Satellite Orbit Visualizer (2D & 3D)")
+
+if st.session_state.orbit_data is not None:
     od = st.session_state.orbit_data
 
     st.subheader("🛰️ Orbit Summary")
@@ -368,8 +351,7 @@ if st.session_state.orbit_data:
     )
 
     st.markdown(
-        f"**Orbital Period:** "
-        f"{od['period_min']:.2f} minutes"
+        f"**Orbital Period:** {od['period']:.2f} minutes"
     )
 
     st.markdown(
@@ -404,14 +386,16 @@ if st.session_state.orbit_data:
 
 else:
     st.info(
-        "Please generate an orbit first "
-        "using the inputs above."
+        "Enter your parameters in the sidebar "
+        "and click 🚀 Generate Simulation."
     )
 
 
-st.subheader(
-    "📋 Orbit Type Reference Table"
-)
+# ============================================================
+# REFERENCE TABLE
+# ============================================================
+
+st.subheader("📋 Orbit Type Reference Table")
 
 orbit_table = pd.DataFrame({
     "Orbit Type": [
@@ -424,7 +408,6 @@ orbit_table = pd.DataFrame({
         "GTO",
         "Unclassified"
     ],
-
     "Periapsis (km)": [
         160,
         2000,
@@ -435,7 +418,6 @@ orbit_table = pd.DataFrame({
         200,
         "-"
     ],
-
     "Apoapsis (km)": [
         2000,
         35786,
@@ -448,6 +430,4 @@ orbit_table = pd.DataFrame({
     ]
 })
 
-st.table(
-    orbit_table
-)
+st.table(orbit_table)
