@@ -4,7 +4,15 @@ import plotly.graph_objects as go
 import streamlit as st
 import warnings
 
-warnings.filterwarnings("ignore", message="Thread 'MainThread': missing ScriptRunContext!")
+warnings.filterwarnings(
+    "ignore",
+    message="Thread 'MainThread': missing ScriptRunContext!"
+)
+
+st.set_page_config(
+    page_title="Satellite Orbit Visualizer",
+    layout="wide"
+)
 
 R_EARTH = 6371
 MU = 398600
@@ -15,35 +23,48 @@ def classify_orbit(altitude_km, inclination_deg):
         if 600 <= altitude_km <= 800:
             return "Sun-Synchronous Orbit (SSO)"
         return "Polar Orbit"
-    elif abs(inclination_deg) < 5 and abs(altitude_km - 35786) < 200:
+
+    if abs(inclination_deg) < 5 and abs(altitude_km - 35786) < 200:
         return "Geostationary Orbit (GEO)"
-    elif 160 <= altitude_km <= 2000:
+
+    if 160 <= altitude_km <= 2000:
         return "Low Earth Orbit (LEO)"
-    elif 2000 < altitude_km < 35786:
+
+    if 2000 < altitude_km < 35786:
         return "Medium Earth Orbit (MEO)"
-    elif altitude_km > 35786:
+
+    if altitude_km > 35786:
         return "High Earth Orbit (HEO)"
-    elif 200 <= altitude_km <= 35786:
+
+    if 200 <= altitude_km <= 35786:
         return "Geostationary Transfer Orbit (GTO)"
-    else:
-        return "Unclassified"
+
+    return "Unclassified"
 
 
 def generate_orbit(apoapsis_km, periapsis_km, inclination_deg, steps=360):
-    a = (apoapsis_km + periapsis_km + 2 * R_EARTH) / 2
-    e = (apoapsis_km - periapsis_km) / (apoapsis_km + periapsis_km + 2 * R_EARTH)
-    inc_rad = np.radians(inclination_deg)
+    if periapsis_km > apoapsis_km:
+        periapsis_km, apoapsis_km = apoapsis_km, periapsis_km
 
+    a = (apoapsis_km + periapsis_km + 2 * R_EARTH) / 2
+
+    e = (
+        (apoapsis_km - periapsis_km)
+        / (apoapsis_km + periapsis_km + 2 * R_EARTH)
+    )
+
+    inc = np.radians(inclination_deg)
     theta = np.linspace(0, 2 * np.pi, steps, endpoint=False)
+
     r = (a * (1 - e**2)) / (1 + e * np.cos(theta))
 
     x = r * np.cos(theta)
     y_orbit = r * np.sin(theta)
 
-    y = y_orbit * np.cos(inc_rad)
-    z = y_orbit * np.sin(inc_rad)
+    y = y_orbit * np.cos(inc)
+    z = y_orbit * np.sin(inc)
 
-    period = 2 * np.pi * np.sqrt(a**3 / MU)
+    period = 2 * np.pi * np.sqrt(a**3 / MU) / 60
 
     min_alt = min(periapsis_km, apoapsis_km)
     max_alt = max(periapsis_km, apoapsis_km)
@@ -53,28 +74,25 @@ def generate_orbit(apoapsis_km, periapsis_km, inclination_deg, steps=360):
         inclination_deg
     )
 
-    return x, y, z, period / 60, (min_alt, max_alt), orbit_type
+    return x, y, z, period, (min_alt, max_alt), orbit_type
 
 
 def create_earth_mesh():
-    u, v = np.mgrid[0:2 * np.pi:60j, 0:np.pi:30j]
+    u, v = np.mgrid[0:2 * np.pi:40j, 0:np.pi:20j]
 
-    xs = R_EARTH * np.cos(u) * np.sin(v)
-    ys = R_EARTH * np.sin(u) * np.sin(v)
-    zs = R_EARTH * np.cos(v)
+    x = R_EARTH * np.cos(u) * np.sin(v)
+    y = R_EARTH * np.sin(u) * np.sin(v)
+    z = R_EARTH * np.cos(v)
 
-    return xs, ys, zs
+    return x, y, z
 
 
-def create_3d_orbit_figure(x, y, z, sat_idx=0):
-
+def create_3d_orbit_figure(x, y, z):
     max_range = np.max(
-        np.abs(
-            np.concatenate([x, y, z])
-        )
-    ) * 1.2
+        np.abs(np.concatenate([x, y, z]))
+    ) * 1.15
 
-    xs, ys, zs = create_earth_mesh()
+    earth_x, earth_y, earth_z = create_earth_mesh()
 
     camera = dict(
         eye=dict(x=1.5, y=1.5, z=1.2),
@@ -85,11 +103,11 @@ def create_3d_orbit_figure(x, y, z, sat_idx=0):
     fig = go.Figure(
         data=[
             go.Surface(
-                x=xs,
-                y=ys,
-                z=zs,
+                x=earth_x,
+                y=earth_y,
+                z=earth_z,
                 colorscale="Blues",
-                opacity=0.6,
+                opacity=0.65,
                 showscale=False,
                 name="Earth"
             ),
@@ -99,14 +117,17 @@ def create_3d_orbit_figure(x, y, z, sat_idx=0):
                 y=y,
                 z=z,
                 mode="lines",
-                line=dict(color="red", width=3),
+                line=dict(
+                    color="red",
+                    width=3
+                ),
                 name="Orbit"
             ),
 
             go.Scatter3d(
-                x=[x[sat_idx]],
-                y=[y[sat_idx]],
-                z=[z[sat_idx]],
+                x=[x[0]],
+                y=[y[0]],
+                z=[z[0]],
                 mode="markers",
                 marker=dict(
                     size=8,
@@ -118,34 +139,42 @@ def create_3d_orbit_figure(x, y, z, sat_idx=0):
         ]
     )
 
-    frames = []
-
-    for i in range(len(x)):
-        frames.append(
-            go.Frame(
-                name=str(i),
-                data=[
-                    go.Scatter3d(
-                        x=[x[i]],
-                        y=[y[i]],
-                        z=[z[i]],
-                        mode="markers",
-                        marker=dict(
-                            size=8,
-                            color="red",
-                            symbol="square"
-                        )
+    frames = [
+        go.Frame(
+            name=str(i),
+            data=[
+                go.Scatter3d(
+                    x=[x[i]],
+                    y=[y[i]],
+                    z=[z[i]],
+                    mode="markers",
+                    marker=dict(
+                        size=8,
+                        color="red",
+                        symbol="square"
                     )
-                ],
-                traces=[2]
-            )
+                )
+            ],
+            traces=[2]
         )
+        for i in range(len(x))
+    ]
 
     fig.frames = frames
 
     fig.update_layout(
-        title="3D Orbit Visualization",
-        margin=dict(l=0, r=0, t=40, b=0),
+        title=dict(
+            text="3D Orbit Visualization",
+            x=0.5,
+            xanchor="center"
+        ),
+
+        margin=dict(
+            l=0,
+            r=0,
+            t=90,
+            b=0
+        ),
 
         scene=dict(
             camera=camera,
@@ -175,8 +204,12 @@ def create_3d_orbit_figure(x, y, z, sat_idx=0):
             dict(
                 type="buttons",
                 showactive=False,
-                x=0.1,
-                y=1.12,
+                direction="left",
+                x=0.5,
+                xanchor="center",
+                y=1.20,
+                yanchor="top",
+
                 buttons=[
                     dict(
                         label="▶ Start Simulation",
@@ -222,12 +255,44 @@ def create_3d_orbit_figure(x, y, z, sat_idx=0):
     return fig
 
 
-st.set_page_config(
-    page_title="Satellite Orbit Visualizer",
-    layout="wide"
-)
+def plot_2d(x, y):
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Circle
 
-st.title("🛰️ Satellite Orbit Visualizer (2D & 3D)")
+    fig, ax = plt.subplots(figsize=(6, 6))
+
+    earth = Circle(
+        (0, 0),
+        R_EARTH,
+        color="blue",
+        alpha=0.3
+    )
+
+    ax.add_patch(earth)
+
+    ax.plot(
+        x,
+        y,
+        "r-",
+        label="Orbit Path"
+    )
+
+    ax.set_aspect("equal")
+    ax.set_xlabel("X (km)")
+    ax.set_ylabel("Y (km)")
+    ax.set_title("2D Orbit Visualization")
+    ax.legend()
+    ax.grid(True)
+
+    st.pyplot(
+        fig,
+        clear_figure=True
+    )
+
+
+st.title(
+    "🛰️ Satellite Orbit Visualizer (2D & 3D)"
+)
 
 
 with st.sidebar:
@@ -265,48 +330,19 @@ with st.sidebar:
     )
 
 
-def plot_2d(x, y):
-    import matplotlib.pyplot as plt
-    from matplotlib.patches import Circle
-
-    fig, ax = plt.subplots(figsize=(6, 6))
-
-    earth = Circle(
-        (0, 0),
-        R_EARTH,
-        color="blue",
-        alpha=0.3
-    )
-
-    ax.add_patch(earth)
-
-    ax.plot(
-        x,
-        y,
-        "r-",
-        label="Orbit Path"
-    )
-
-    ax.set_aspect("equal")
-    ax.set_xlabel("X (km)")
-    ax.set_ylabel("Y (km)")
-    ax.set_title("2D Orbit Visualization")
-    ax.legend()
-    ax.grid(True)
-
-    st.pyplot(
-        fig,
-        clear_figure=True
-    )
-
-
 if "orbit_data" not in st.session_state:
     st.session_state.orbit_data = None
 
 
 if st.button("Generate Orbit"):
-
-    x, y, z, period_min, alt_range, orbit_type = generate_orbit(
+    (
+        x,
+        y,
+        z,
+        period_min,
+        alt_range,
+        orbit_type
+    ) = generate_orbit(
         apoapsis,
         periapsis,
         inclination
@@ -323,7 +359,6 @@ if st.button("Generate Orbit"):
 
 
 if st.session_state.orbit_data:
-
     od = st.session_state.orbit_data
 
     st.subheader("🛰️ Orbit Summary")
@@ -333,13 +368,15 @@ if st.session_state.orbit_data:
     )
 
     st.markdown(
-        f"**Orbital Period:** {od['period_min']:.2f} minutes"
+        f"**Orbital Period:** "
+        f"{od['period_min']:.2f} minutes"
     )
 
     st.markdown(
         f"**Altitude Range:** "
-        f"{od['alt_range'][0]} km to "
-        f"{od['alt_range'][1]} km"
+        f"{od['alt_range'][0]:.0f} km "
+        f"to "
+        f"{od['alt_range'][1]:.0f} km"
     )
 
     if show_2d:
@@ -348,29 +385,11 @@ if st.session_state.orbit_data:
             od["y"]
         )
 
-    pos_deg = st.slider(
-        "Satellite Position (degrees)",
-        0,
-        360,
-        0,
-        step=1
-    )
-
-    if pos_deg == 360:
-        pos_idx = 0
-    else:
-        pos_idx = int(
-            (pos_deg / 360)
-            * (len(od["x"]) - 1)
-        )
-
     if show_3d:
-
         fig3d = create_3d_orbit_figure(
             od["x"],
             od["y"],
-            od["z"],
-            pos_idx
+            od["z"]
         )
 
         st.plotly_chart(
@@ -384,7 +403,6 @@ if st.session_state.orbit_data:
         )
 
 else:
-
     st.info(
         "Please generate an orbit first "
         "using the inputs above."
@@ -396,7 +414,6 @@ st.subheader(
 )
 
 orbit_table = pd.DataFrame({
-
     "Orbit Type": [
         "LEO",
         "MEO",
